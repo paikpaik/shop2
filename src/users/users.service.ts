@@ -1,10 +1,15 @@
 import { EmailService } from './../email/email.service';
 import * as uuid from 'uuid';
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { UserInfo } from './UserInfo';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import e from 'express';
 
 @Injectable()
 export class UsersService {
@@ -12,6 +17,7 @@ export class UsersService {
     private emailService: EmailService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private dataSource: DataSource,
   ) {}
 
   async createUser(name: string, email: string, password: string) {
@@ -39,12 +45,23 @@ export class UsersService {
     password: string,
     signupVerifyToken: string,
   ) {
-    const user = new User();
-    user.name = name;
-    user.email = email;
-    user.password = password;
-    user.signupVerifyToken = signupVerifyToken;
-    await this.usersRepository.save(user);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    try {
+      await queryRunner.startTransaction();
+      const user = new User();
+      user.name = name;
+      user.email = email;
+      user.password = password;
+      user.signupVerifyToken = signupVerifyToken;
+      await queryRunner.manager.save(user);
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   private async sendMemberJoinEmail(email: string, signupVerifyToken: string) {
