@@ -3,14 +3,16 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { validationSchema } from './config/validationSchema';
+import { AuthModule } from './auth/auth.module';
 import emailConfig from './config/emailConfig';
+import authConfig from './config/authConfig';
 
 @Module({
   imports: [
     UsersModule,
     ConfigModule.forRoot({
       envFilePath: [`${__dirname}/config/env/.${process.env.NODE_ENV}.env`],
-      load: [emailConfig],
+      load: [emailConfig, authConfig],
       isGlobal: true,
       validationSchema,
     }),
@@ -24,6 +26,7 @@ import emailConfig from './config/emailConfig';
       entities: [__dirname + `/**/*.entity{.ts,.js}`],
       synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
     }),
+    AuthModule,
   ],
   controllers: [],
   providers: [],

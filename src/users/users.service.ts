@@ -1,23 +1,23 @@
+import { AuthService } from './../auth/auth.service';
 import { EmailService } from './../email/email.service';
 import * as uuid from 'uuid';
 import {
   Injectable,
-  InternalServerErrorException,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { UserInfo } from './UserInfo';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { DataSource, Repository } from 'typeorm';
-import e from 'express';
 
 @Injectable()
 export class UsersService {
   constructor(
     private emailService: EmailService,
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    @InjectRepository(User) private usersRepository: Repository<User>,
     private dataSource: DataSource,
+    private authService: AuthService,
   ) {}
 
   async createUser(name: string, email: string, password: string) {
@@ -72,14 +72,44 @@ export class UsersService {
   }
 
   async verifyEmail(signupVerifyToken: string): Promise<string> {
-    throw new Error('Method not implemented.');
+    const user = await this.usersRepository.findOne({
+      where: { signupVerifyToken },
+    });
+    if (!user) {
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+    return this.authService.login({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
   }
 
   async login(email: string, password: string): Promise<string> {
-    throw new Error('Method not implemented.');
+    const user = await this.usersRepository.findOne({
+      where: { email, password },
+    });
+    if (!user) {
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+    return this.authService.login({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
   }
 
-  async getUserInfo(userId: string): Promise<UserInfo> {
-    throw new Error('Method not implemented.');
+  async getUserInfo(userId: number): Promise<UserInfo> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    };
   }
 }

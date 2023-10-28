@@ -1,13 +1,25 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { UserLoginDto } from './dto/user-login.dto';
 import { UserInfo } from './UserInfo';
 import { UsersService } from './users.service';
+import { AuthService } from 'src/auth/auth.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    private authService: AuthService,
+  ) {}
 
   @Post()
   async createUser(@Body() dto: CreateUserDto): Promise<void> {
@@ -27,8 +39,15 @@ export class UsersController {
     return await this.userService.login(email, password);
   }
 
-  @Get('/:id')
-  async getUserInfo(@Param('id') userId: string): Promise<UserInfo> {
-    return await this.userService.getUserInfo(userId);
+  @Get(':id')
+  async getUserInfo(
+    @Headers() headers: any,
+    @Param('id') userId: number,
+  ): Promise<UserInfo> {
+    console.log('여긴오지?');
+    const jwtString = headers.authorization.split('Bearer ')[1];
+    console.log(jwtString);
+    this.authService.verify(jwtString);
+    return this.userService.getUserInfo(userId);
   }
 }
